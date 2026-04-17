@@ -1,12 +1,19 @@
 from rapidfuzz import fuzz
 
-def score_name(a, b):
-    return fuzz.token_set_ratio(a, b)
+def token_overlap(a, b):
+    return len(set(a) & set(b))
 
-def keyword_boost(a, b):
-    return len(set(a.split()) & set(b.split()))
+def variant_score(v1, v2):
+    if not v1 and not v2:
+        return 0
+    if set(v1) == set(v2):
+        return 5
+    return -10  # khác variant → phạt mạnh
 
-def final_score(a, b):
-    s = score_name(a, b)
-    boost = keyword_boost(a, b)
-    return s + boost * 2
+def final_score(p1, p2, text1, text2):
+    score = fuzz.token_set_ratio(text1, text2)
+
+    score += token_overlap(p1["tokens"], p2["tokens"]) * 2
+    score += variant_score(p1["variant"], p2["variant"])
+
+    return score
