@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+
+# Output
+output/
+logs/
+
+# Data (tùy chọn)
+data/raw/
+
+# OS
+.DS_Store
+Thumbs.db
