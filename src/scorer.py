@@ -1,19 +1,58 @@
-from rapidfuzz import fuzz
+# src/scorer.py
 
-def token_overlap(a, b):
-    return len(set(a) & set(b))
+from difflib import SequenceMatcher
 
-def variant_score(v1, v2):
-    if not v1 and not v2:
-        return 0
-    if set(v1) == set(v2):
-        return 5
-    return -10  # khác variant → phạt mạnh
 
-def final_score(p1, p2, text1, text2):
-    score = fuzz.token_set_ratio(text1, text2)
+# ========================
+# TOKEN OVERLAP
+# ========================
+def token_overlap(exp1, exp2):
+    """
+    exp1, exp2 = list of token groups
+    ví dụ:
+    [["cf", "cafe"], ["sua"], ["da"]]
+    """
 
-    score += token_overlap(p1["tokens"], p2["tokens"]) * 2
-    score += variant_score(p1["variant"], p2["variant"])
+    match = 0
+    total = len(exp1)
 
-    return score
+    for g1 in exp1:
+        for g2 in exp2:
+            if any(t in g2 for t in g1):
+                match += 1
+                break
+
+    return match / total if total > 0 else 0
+
+
+# ========================
+# WEIGHT SCORE (FIX LỖI CHÍNH)
+# ========================
+def weight_score(w1, w2):
+    if w1 and w2:
+        if w1 == w2:
+            return 1
+        elif abs(w1 - w2) / max(w1, w2) < 0.1:
+            return 0.5
+        else:
+            return -1
+    elif not w1 or not w2:
+        return 0.2  # recovery nhẹ
+
+
+# ========================
+# FUZZY MATCH
+# ========================
+def fuzzy(a, b):
+    return SequenceMatcher(None, a, b).ratio()
+
+
+# ========================
+# FINAL SCORE
+# ========================
+def compute_score(tok, weight, fuzzy_score):
+    return (
+        0.5 * tok +
+        0.2 * weight +
+        0.3 * fuzzy_score
+    )

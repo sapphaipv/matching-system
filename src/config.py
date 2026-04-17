@@ -1,7 +1,5 @@
-THRESHOLD_WEAK = 65
-THRESHOLD_STRONG = 85
+THRESHOLD_MATCH = 0.85
+THRESHOLD_REVIEW = 0.7
 
-HD_FILE = "data/raw/HoaDonThue.xlsx"
-SP_FILE = "data/raw/SanPham.xlsx"
-
-OUTPUT_FILE = "output/matching_result.xlsx"
+TOKEN_MIN = 0.5
+TOKEN_STRICT = 0.8
