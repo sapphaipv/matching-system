@@ -1,17 +1,54 @@
+# ========================
 # Python
+# ========================
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Virtual env
+# ========================
+# Virtual Environment
+# ========================
 .venv/
+venv/
+env/
 
-# Output
-output/
+# ========================
+# Logs & Output
+# ========================
 logs/
+output/
+*.log
 
-# Data (tùy chọn)
+# ========================
+# Data (RAW + GENERATED)
+# ========================
 data/raw/
+data/tmp/
+data/cache/
 
+# ❗ Excel working files (rất dễ gây conflict)
+*.xlsx
+*.xls
+
+# 👉 nhưng vẫn cho phép giữ file mẫu
+!data/sample/
+!data/sample/*.xlsx
+
+# ========================
+# Model / Cache (future)
+# ========================
+*.pkl
+*.joblib
+
+# ========================
+# IDE / Editor
+# ========================
+.vscode/
+.idea/
+
+# ========================
 # OS
+# ========================
 .DS_Store
 Thumbs.db
