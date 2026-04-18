@@ -79,11 +79,11 @@ def main():
     # ========================
     df = pd.DataFrame(results)
 
-    # df.to_excel(OUTPUT_FILE, index=False)
+    df.to_excel(OUTPUT_FILE, index=False)
 
     # chỉ save full khi chạy xong bình thường
-    if i == len(invoices) - 1:
-        df.to_excel(OUTPUT_FILE, index=False)
+    # if i == len(invoices) - 1:
+    #     df.to_excel(OUTPUT_FILE, index=False)
 
     print("✅ DONE")
     print(f"📄 Output: {OUTPUT_FILE}")

@@ -56,3 +56,13 @@ def compute_score(tok, weight, fuzzy_score):
         0.2 * weight +
         0.3 * fuzzy_score
     )
+
+def flavor_penalty(attr_a, attr_b):
+    f1 = attr_a.get("flavor", [])
+    f2 = attr_b.get("flavor", [])
+
+    if f1 and f2:
+        if set(f1) != set(f2):
+            return -0.5
+
+    return 0

@@ -23,3 +23,25 @@ def classify_tokens(tokens):
             identity.append(t)
 
     return identity, attribute
+
+def extract_by_type(text, vocab, target_type):
+    text = str(text).lower()
+    found = []
+
+    for v in vocab:
+        # ADD guard
+        if not isinstance(v, dict):
+            continue
+
+        if v.get("type") == target_type:
+            if v.get("keyword") in text:
+                found.append(v["keyword"])
+
+    return found
+
+def extract_attributes(text, vocab):
+    return {
+        "flavor": extract_by_type(text, vocab, "flavor"),
+        "sugar": extract_by_type(text, vocab, "sugar"),
+        "type": extract_by_type(text, vocab, "type"),
+    }

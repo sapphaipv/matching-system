@@ -1,6 +1,7 @@
 # src/matcher.py
 
-from src.attribute import classify_tokens
+from src.attribute import classify_tokens, extract_attributes
+from src.scorer import flavor_penalty
 from src.normalizer import normalize_text
 from src.tokenizer import tokenize
 from src.synonym import expand_tokens
@@ -16,6 +17,10 @@ def match_product(a, b, synonym_map, debug=False):
     # ========================
     na = normalize_text(a)
     nb = normalize_text(b)
+
+    # ADD (v16.3.2)
+    attr_full_a = extract_attributes(na, synonym_map)
+    attr_full_b = extract_attributes(nb, synonym_map)
 
     # ========================
     # TOKENIZE
@@ -78,6 +83,10 @@ def match_product(a, b, synonym_map, debug=False):
         # chỉ match nếu đủ identity trùng
         if len(id_set_a.intersection(id_set_b)) >= 2:
             score = compute_score(tok, w, fz)
+
+            # ADD (v16.3.2 - SAFE)
+            score += flavor_penalty(attr_full_a, attr_full_b)
+            
             return True, build_explain(
                 score, tok, w, fz,
                 "subset match (identity-based)"

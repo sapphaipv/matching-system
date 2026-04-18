@@ -20,28 +20,45 @@ def safe_str(x):
 # VOCAB (Synonym)
 # ========================
 
-def load_vocab(path="vocab.xlsx", sheet="Synonym_Map"):
-    df = pd.read_excel(path, sheet_name=sheet)
-    df = normalize_columns(df)
+def load_vocab(path="vocab.xlsx"):
+    import pandas as pd
 
-    if "keyword" not in df.columns:
-        raise Exception("❌ Synonym_Map missing column 'keyword'")
+    xls = pd.ExcelFile(path)
 
-    synonym_map = {}
+    # ========================
+    # 1. SYNONYM MAP (cũ)
+    # ========================
+    df_syn = pd.read_excel(xls, sheet_name="Synonym_Map")
+    df_syn.columns = [c.strip().lower() for c in df_syn.columns]
 
-    for _, row in df.iterrows():
-        key = safe_str(row["keyword"])
+    if "keyword" not in df_syn.columns:
+        raise Exception("❌ Sheet 'Synonym_Map' thiếu cột 'keyword'")
 
-        if not key:
-            continue
+    df_syn["keyword"] = df_syn["keyword"].astype(str).str.strip().str.lower()
 
-        raw = safe_str(row.get("synonyms", ""))
-        values = [v.strip() for v in raw.split(",") if v.strip()]
+    synonym_vocab = df_syn.to_dict("records")
 
-        synonym_map[key] = values
+    # ========================
+    # 2. ATTRIBUTE MAP (mới)
+    # ========================
+    if "Attribute_Map" in xls.sheet_names:
+        df_attr = pd.read_excel(xls, sheet_name="Attribute_Map")
+        df_attr.columns = [c.strip().lower() for c in df_attr.columns]
 
-    return synonym_map
+        if "keyword" not in df_attr.columns or "type" not in df_attr.columns:
+            raise Exception("❌ Sheet 'Attribute_Map' cần 'keyword' và 'type'")
 
+        df_attr["keyword"] = df_attr["keyword"].astype(str).str.strip().str.lower()
+        df_attr["type"] = df_attr["type"].astype(str).str.strip().str.lower()
+
+        attribute_vocab = df_attr.to_dict("records")
+    else:
+        attribute_vocab = []
+
+    return {
+        "synonym": synonym_vocab,
+        "attribute": attribute_vocab
+    }
 
 # ========================
 # PRODUCT LIST (SP)
