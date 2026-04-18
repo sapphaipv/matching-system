@@ -48,51 +48,34 @@ def load_vocab(path="vocab.xlsx", sheet="Synonym_Map"):
 # ========================
 
 def load_products(path, sheet="SP"):
+    import pandas as pd
+
     df = pd.read_excel(path, sheet_name=sheet)
-    df = normalize_columns(df)
+    df.columns = [c.strip().lower() for c in df.columns]
 
-    # detect column name linh hoạt
-    name_col = None
-    for col in ["ten hang", "ten_hang", "name"]:
+    for col in ["ten hang", "tên hàng"]:
         if col in df.columns:
-            name_col = col
-            break
+            return df[col].dropna().astype(str).tolist()
 
-    if not name_col:
-        raise Exception("❌ SP sheet missing product name column")
-
-    products = []
-
-    for _, row in df.iterrows():
-        name = safe_str(row[name_col])
-        if name:
-            products.append(name)
-
-    return products
-
+    return df.iloc[:, 0].dropna().astype(str).tolist()
 
 # ========================
 # INVOICE LIST (HD)
 # ========================
 
 def load_invoices(path, sheet="HD"):
+    import pandas as pd
+
     df = pd.read_excel(path, sheet_name=sheet)
-    df = normalize_columns(df)
+    df.columns = [c.strip().lower() for c in df.columns]
 
-    name_col = None
-    for col in ["ten hang", "ten_hang", "description"]:
+    for col in [
+        "tên hàng hóa, dịch vụ",   # 🔥 CÁI NÀY
+        "ten hang hoa, dich vu",
+        "ten hang",
+        "tên hàng"
+    ]:
         if col in df.columns:
-            name_col = col
-            break
+            return df[col].dropna().astype(str).tolist()
 
-    if not name_col:
-        raise Exception("❌ HD sheet missing product column")
-
-    invoices = []
-
-    for _, row in df.iterrows():
-        name = safe_str(row[name_col])
-        if name:
-            invoices.append(name)
-
-    return invoices
+    return df.iloc[:, 0].dropna().astype(str).tolist()

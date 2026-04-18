@@ -1,5 +1,6 @@
 # src/matcher.py
 
+from src.attribute import classify_tokens
 from src.normalizer import normalize_text
 from src.tokenizer import tokenize
 from src.synonym import expand_tokens
@@ -23,6 +24,12 @@ def match_product(a, b, synonym_map, debug=False):
     tb = tokenize(nb)
 
     # ========================
+    # ATTRIBUTE CLASSIFICATION
+    # ========================
+    id_a, attr_a = classify_tokens(ta)
+    id_b, attr_b = classify_tokens(tb)
+
+    # ========================
     # SYNONYM EXPAND
     # ========================
     ea = expand_tokens(ta, synonym_map)
@@ -36,7 +43,6 @@ def match_product(a, b, synonym_map, debug=False):
 
     # ========================
     # HARD RULE: WEIGHT
-    # chỉ check khi cả 2 có
     # ========================
     if w1 is not None and w2 is not None:
         if w1 != w2:
@@ -53,17 +59,39 @@ def match_product(a, b, synonym_map, debug=False):
     fz = fuzzy(na, nb)
 
     # ========================
+    # ATTRIBUTE CONFLICT
+    # ========================
+    if attr_a and attr_b:
+        if not set(attr_a).intersection(set(attr_b)):
+            return False, build_explain(
+                0, tok, w, fz,
+                "attribute conflict"
+            )
+
+    # ========================
+    # SUBSET RULE (IDENTITY-BASED)
+    # ========================
+    id_set_a = set(id_a)
+    id_set_b = set(id_b)
+
+    if id_set_b.issubset(id_set_a) or id_set_a.issubset(id_set_b):
+        # chỉ match nếu đủ identity trùng
+        if len(id_set_a.intersection(id_set_b)) >= 2:
+            score = compute_score(tok, w, fz)
+            return True, build_explain(
+                score, tok, w, fz,
+                "subset match (identity-based)"
+            )
+
+    # ========================
     # GUARDRAILS
     # ========================
-
-    # ❌ token quá thấp → reject
     if tok < 0.5:
         return False, build_explain(
             0, tok, w, fz,
             "low token overlap"
         )
 
-    # ⚠️ nếu thiếu weight → cần token cao hơn
     if (w1 is None or w2 is None) and tok < 0.7:
         return False, build_explain(
             0, tok, w, fz,
@@ -86,6 +114,10 @@ def match_product(a, b, synonym_map, debug=False):
             "nb": nb,
             "tokens_a": ta,
             "tokens_b": tb,
+            "id_a": id_a,
+            "id_b": id_b,
+            "attr_a": attr_a,
+            "attr_b": attr_b,
             "token_overlap": tok,
             "weight_a": w1,
             "weight_b": w2,

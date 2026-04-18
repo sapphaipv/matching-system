@@ -1,5 +1,5 @@
-from matcher import match_product
-from loader import load_vocab
+from src.matcher import match_product
+from src.loader import load_vocab
 
 def run_tests():
     synonym_map = load_vocab("vocab.xlsx")

@@ -1,5 +1,5 @@
 import pandas as pd
-from src.normalize import normalize
+from normalizer import normalize
 from src.matcher import build_candidates
 from src.resolver import resolve_one_to_one
 from src.config import *
