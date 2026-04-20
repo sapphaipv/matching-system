@@ -1,3 +1,5 @@
+# src/matcher.py
+
 from src.attribute import classify_tokens, extract_attributes
 from src.scorer import flavor_penalty
 from src.normalizer import normalize_text
@@ -9,26 +11,37 @@ from src.explain import build_explain
 from src.config import THRESHOLD_MATCH, THRESHOLD_REVIEW
 
 
-CATEGORY_KEYWORDS = {
-    "cao", "kem", "thuốc", "gel", "dầu",
-    "cá", "gà", "vịt", "heo", "bò", "tôm",
-    "bánh", "kẹo", "sữa", "nước", "trà"
+# ========================
+# CATEGORY GROUPS (STRONGER)
+# ========================
+CATEGORY_GROUPS = {
+    "cosmetic": {"kem", "mặt", "mask", "serum", "gel", "dưỡng", "nạ"},
+    "food": {"cá", "bánh", "kẹo", "sữa", "trà", "nước"},
+    "medicine": {"thuốc", "cao", "viên", "dược"}
 }
 
 
-def extract_category(tokens):
-    return set([t for t in tokens if t in CATEGORY_KEYWORDS])
+def get_category(tokens):
+    found = set()
+    for t in tokens:
+        for cat, words in CATEGORY_GROUPS.items():
+            if t in words:
+                found.add(cat)
+    return found
 
 
 def category_conflict(tokens_a, tokens_b):
-    ca = extract_category(tokens_a)
-    cb = extract_category(tokens_b)
+    ca = get_category(tokens_a)
+    cb = get_category(tokens_b)
 
-    if ca and cb and not ca.intersection(cb):
+    if ca and cb and ca.isdisjoint(cb):
         return True
     return False
 
 
+# ========================
+# MAIN MATCH FUNCTION
+# ========================
 def match_product(a, b, synonym_map, attribute_vocab, debug=False):
 
     # ========================
@@ -37,9 +50,28 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     na = normalize_text(a)
     nb = normalize_text(b)
 
-    # ✅ FIX: dùng attribute_vocab đúng
+    # ========================
+    # ATTRIBUTE (FULL)
+    # ========================
     attr_full_a = extract_attributes(na, attribute_vocab)
     attr_full_b = extract_attributes(nb, attribute_vocab)
+
+    # ========================
+    # HARD ATTRIBUTE CHECK
+    # ========================
+    def attr_conflict(a, b, key):
+        if a.get(key) and b.get(key):
+            return set(a[key]).isdisjoint(set(b[key]))
+        return False
+
+    # ❌ flavor mismatch → reject ngay
+    if attr_conflict(attr_full_a, attr_full_b, "flavor"):
+        return False, build_explain(0, 0, 0, 0, "flavor conflict")
+
+    # ⚠ sugar mismatch → penalty (KHÔNG reject)
+    sugar_penalty = 0
+    if attr_conflict(attr_full_a, attr_full_b, "sugar"):
+        sugar_penalty = -0.3   # mạnh hơn bản cũ
 
     # ========================
     # TOKENIZE
@@ -47,12 +79,14 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     ta = tokenize(na)
     tb = tokenize(nb)
 
-    # category guard
+    # ========================
+    # CATEGORY GUARD
+    # ========================
     if category_conflict(ta, tb):
         return False, build_explain(0, 0, 0, 0, "category conflict")
 
     # ========================
-    # ATTRIBUTE CLASSIFICATION
+    # ATTRIBUTE CLASSIFICATION (legacy)
     # ========================
     id_a, attr_a = classify_tokens(ta)
     id_b, attr_b = classify_tokens(tb)
@@ -69,7 +103,7 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     w1 = parse_weight(na)
     w2 = parse_weight(nb)
 
-    # HARD RULE: weight
+    # HARD RULE: weight mismatch
     if w1 is not None and w2 is not None and w1 != w2:
         return False, build_explain(0, 0, -1, 0, "weight mismatch")
 
@@ -80,7 +114,7 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     w = weight_score(w1, w2)
     fz = fuzzy(na, nb)
 
-    # attribute conflict
+    # legacy attribute conflict
     if attr_a and attr_b and not set(attr_a).intersection(set(attr_b)):
         return False, build_explain(0, tok, w, fz, "attribute conflict")
 
@@ -89,8 +123,18 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     # ========================
     score = compute_score(tok, w, fz)
 
-    # add flavor penalty
+    # attribute effects
     score += flavor_penalty(attr_full_a, attr_full_b)
+    score += sugar_penalty
+
+    # ========================
+    # PREFER SPECIFIC NAME (FIXED POSITION)
+    # ========================
+    len_bonus = 0
+    if len(tb) > len(ta):
+        len_bonus = 0.05
+
+    score += len_bonus
 
     # ========================
     # DECISION
