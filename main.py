@@ -49,18 +49,27 @@ def main():
             best_explain = None
 
             for prod in products:
-                prod = str(prod).strip()   # 🔥 FIX 2
-                is_match, explain = match_product(inv, prod, synonym_map)
+                prod_name = str(prod["tên hàng"]).strip()
+                is_match, explain = match_product(inv, prod_name, synonym_map)
                 score = explain["score"]
 
                 if score > best_score:
                     best_score = score
-                    best_match = prod
+                    best_match = prod_name
+                    best_code = prod["mã hàng"]
                     best_explain = explain
+
+            # results.append({
+            #     "invoice_name": inv,
+            #     "matched_product": best_match,
+            #     "score": best_score,
+            #     "reason": best_explain["detail"]["reason"] if best_explain else ""
+            # })
 
             results.append({
                 "invoice_name": inv,
                 "matched_product": best_match,
+                "mã hàng": best_code if best_match else "",
                 "score": best_score,
                 "reason": best_explain["detail"]["reason"] if best_explain else ""
             })
@@ -78,6 +87,29 @@ def main():
     # SAVE OUTPUT
     # ========================
     df = pd.DataFrame(results)
+
+    df = pd.DataFrame(results)
+
+    # ========================
+    # CLEAN DATA
+    # ========================
+
+    # ❌ bỏ dòng rỗng
+    df = df[df["matched_product"].notna()]
+    df = df[df["matched_product"].astype(str).str.strip() != ""]
+
+    # ❌ bỏ score = 0
+    df = df[df["score"] > 0]
+
+    # ❌ bỏ duplicate theo Tên hàng
+    df = df.drop_duplicates(subset=["matched_product"])
+
+    # ========================
+    # REORDER COLUMN
+    # ========================
+
+    cols = ["mã hàng", "matched_product"] + [c for c in df.columns if c not in ["mã hàng", "matched_product"]]
+    df = df[cols]
 
     df.to_excel(OUTPUT_FILE, index=False)
 

@@ -70,11 +70,27 @@ def load_products(path, sheet="SP"):
     df = pd.read_excel(path, sheet_name=sheet)
     df.columns = [c.strip().lower() for c in df.columns]
 
-    for col in ["ten hang", "tên hàng"]:
-        if col in df.columns:
-            return df[col].dropna().astype(str).tolist()
+    # detect column
+    name_col = None
+    code_col = None
 
-    return df.iloc[:, 0].dropna().astype(str).tolist()
+    for col in df.columns:
+        if col in ["tên hàng", "ten hang"]:
+            name_col = col
+        if col in ["mã hàng", "ma hang", "code"]:
+            code_col = col
+
+    if name_col is None:
+        raise Exception("❌ Không tìm thấy cột 'Tên hàng' trong SP")
+
+    # fallback nếu chưa có mã
+    if code_col is None:
+        df["mã hàng"] = ""
+        code_col = "mã hàng"
+
+    df[name_col] = df[name_col].astype(str).str.strip()
+
+    return df[[code_col, name_col]].dropna().to_dict("records")
 
 # ========================
 # INVOICE LIST (HD)
