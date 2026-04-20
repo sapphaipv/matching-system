@@ -62,7 +62,25 @@ def normalize_text(text: str) -> str:
     text = normalize_units(text)
     text = remove_noise(text)
 
+    # 👇 đặt ở đây (BEST)
+    text = normalize_packaging(text)
+
     # remove multiple spaces
     text = re.sub(r"\s+", " ", text).strip()
 
+    return text
+
+# ========================
+# PACKAGING_MAP
+# ========================
+PACKAGING_MAP = {
+    "hủ": "hũ",
+    "lọ": "chai",
+    "chai": "chai",
+    "hũ": "hũ"
+}
+
+def normalize_packaging(text):
+    for k, v in PACKAGING_MAP.items():
+        text = text.replace(k, v)
     return text

@@ -6,8 +6,8 @@ from src.loader import load_vocab
 def main():
     synonym_map = load_vocab("vocab.xlsx")
 
-    A = "xoai say deo ola 200g"
-    B = "xoai say deo ola 200 g"
+    A = "cao atiso hũ 250gg"
+    B = "thuốc Atiso hủ 250g"
 
     matched, explain = match_product(A, B, synonym_map, debug=True)
 

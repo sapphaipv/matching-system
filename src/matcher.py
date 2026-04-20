@@ -1,5 +1,3 @@
-# src/matcher.py
-
 from src.attribute import classify_tokens, extract_attributes
 from src.scorer import flavor_penalty
 from src.normalizer import normalize_text
@@ -11,22 +9,47 @@ from src.explain import build_explain
 from src.config import THRESHOLD_MATCH, THRESHOLD_REVIEW
 
 
-def match_product(a, b, synonym_map, debug=False):
+CATEGORY_KEYWORDS = {
+    "cao", "kem", "thuốc", "gel", "dầu",
+    "cá", "gà", "vịt", "heo", "bò", "tôm",
+    "bánh", "kẹo", "sữa", "nước", "trà"
+}
+
+
+def extract_category(tokens):
+    return set([t for t in tokens if t in CATEGORY_KEYWORDS])
+
+
+def category_conflict(tokens_a, tokens_b):
+    ca = extract_category(tokens_a)
+    cb = extract_category(tokens_b)
+
+    if ca and cb and not ca.intersection(cb):
+        return True
+    return False
+
+
+def match_product(a, b, synonym_map, attribute_vocab, debug=False):
+
     # ========================
     # NORMALIZE
     # ========================
     na = normalize_text(a)
     nb = normalize_text(b)
 
-    # ADD (v16.3.2)
-    attr_full_a = extract_attributes(na, synonym_map)
-    attr_full_b = extract_attributes(nb, synonym_map)
+    # ✅ FIX: dùng attribute_vocab đúng
+    attr_full_a = extract_attributes(na, attribute_vocab)
+    attr_full_b = extract_attributes(nb, attribute_vocab)
 
     # ========================
     # TOKENIZE
     # ========================
     ta = tokenize(na)
     tb = tokenize(nb)
+
+    # category guard
+    if category_conflict(ta, tb):
+        return False, build_explain(0, 0, 0, 0, "category conflict")
 
     # ========================
     # ATTRIBUTE CLASSIFICATION
@@ -46,15 +69,9 @@ def match_product(a, b, synonym_map, debug=False):
     w1 = parse_weight(na)
     w2 = parse_weight(nb)
 
-    # ========================
-    # HARD RULE: WEIGHT
-    # ========================
-    if w1 is not None and w2 is not None:
-        if w1 != w2:
-            return False, build_explain(
-                0, 0, -1, 0,
-                "weight mismatch (hard)"
-            )
+    # HARD RULE: weight
+    if w1 is not None and w2 is not None and w1 != w2:
+        return False, build_explain(0, 0, -1, 0, "weight mismatch")
 
     # ========================
     # COMPUTE FEATURES
@@ -63,77 +80,17 @@ def match_product(a, b, synonym_map, debug=False):
     w = weight_score(w1, w2)
     fz = fuzzy(na, nb)
 
-    # ========================
-    # ATTRIBUTE CONFLICT
-    # ========================
-    if attr_a and attr_b:
-        if not set(attr_a).intersection(set(attr_b)):
-            return False, build_explain(
-                0, tok, w, fz,
-                "attribute conflict"
-            )
-
-    # ========================
-    # SUBSET RULE (IDENTITY-BASED)
-    # ========================
-    id_set_a = set(id_a)
-    id_set_b = set(id_b)
-
-    if id_set_b.issubset(id_set_a) or id_set_a.issubset(id_set_b):
-        # chỉ match nếu đủ identity trùng
-        if len(id_set_a.intersection(id_set_b)) >= 2:
-            score = compute_score(tok, w, fz)
-
-            # ADD (v16.3.2 - SAFE)
-            score += flavor_penalty(attr_full_a, attr_full_b)
-            
-            return True, build_explain(
-                score, tok, w, fz,
-                "subset match (identity-based)"
-            )
-
-    # ========================
-    # GUARDRAILS
-    # ========================
-    if tok < 0.5:
-        return False, build_explain(
-            0, tok, w, fz,
-            "low token overlap"
-        )
-
-    if (w1 is None or w2 is None) and tok < 0.7:
-        return False, build_explain(
-            0, tok, w, fz,
-            "missing weight but weak token"
-        )
+    # attribute conflict
+    if attr_a and attr_b and not set(attr_a).intersection(set(attr_b)):
+        return False, build_explain(0, tok, w, fz, "attribute conflict")
 
     # ========================
     # FINAL SCORE
     # ========================
     score = compute_score(tok, w, fz)
 
-    # ========================
-    # DEBUG
-    # ========================
-    if debug:
-        print("DEBUG:", {
-            "A": a,
-            "B": b,
-            "na": na,
-            "nb": nb,
-            "tokens_a": ta,
-            "tokens_b": tb,
-            "id_a": id_a,
-            "id_b": id_b,
-            "attr_a": attr_a,
-            "attr_b": attr_b,
-            "token_overlap": tok,
-            "weight_a": w1,
-            "weight_b": w2,
-            "weight_score": w,
-            "fuzzy": fz,
-            "score": score
-        })
+    # add flavor penalty
+    score += flavor_penalty(attr_full_a, attr_full_b)
 
     # ========================
     # DECISION
