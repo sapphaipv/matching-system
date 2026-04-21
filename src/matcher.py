@@ -17,7 +17,12 @@ from src.config import THRESHOLD_MATCH, THRESHOLD_REVIEW
 CATEGORY_GROUPS = {
     "cosmetic": {"kem", "mặt", "mask", "serum", "gel", "dưỡng", "nạ"},
     "food": {"cá", "bánh", "kẹo", "sữa", "trà", "nước"},
-    "medicine": {"thuốc", "cao", "viên", "dược"}
+    "medicine": {"thuốc", "cao", "viên", "dược"},
+
+    # NEW
+    "alcohol": {"rum", "vodka", "whisky", "rượu", "ruou", "tửu", "tuu"},
+    "oil": {"dầu", "dau"},
+    "powder": {"bột", "bot"},
 }
 
 
@@ -36,6 +41,29 @@ def category_conflict(tokens_a, tokens_b):
 
     if ca and cb and ca.isdisjoint(cb):
         return True
+    return False
+
+
+# ========================
+# ANTI CONFUSION (FIXED)
+# ========================
+def anti_conflict_text(a, b):
+    a = a.lower()
+    b = b.lower()
+
+    pairs = [
+        ("cam", "cám"),
+        ("cám", "cam"),
+        ("cacao", "cao"),
+        ("cao", "cacao"),
+    ]
+
+    for x, y in pairs:
+        if x in a and y in b:
+            return True
+        if y in a and x in b:
+            return True
+
     return False
 
 
@@ -64,14 +92,14 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
             return set(a[key]).isdisjoint(set(b[key]))
         return False
 
-    # ❌ flavor mismatch → reject ngay
+    # HARD RULE
     if attr_conflict(attr_full_a, attr_full_b, "flavor"):
         return False, build_explain(0, 0, 0, 0, "flavor conflict")
 
-    # ⚠ sugar mismatch → penalty (KHÔNG reject)
+    # penalty
     sugar_penalty = 0
     if attr_conflict(attr_full_a, attr_full_b, "sugar"):
-        sugar_penalty = -0.3   # mạnh hơn bản cũ
+        sugar_penalty = -0.3
 
     # ========================
     # TOKENIZE
@@ -80,13 +108,20 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     tb = tokenize(nb)
 
     # ========================
-    # CATEGORY GUARD
+    # CATEGORY GUARD (HARD)
     # ========================
     if category_conflict(ta, tb):
         return False, build_explain(0, 0, 0, 0, "category conflict")
 
     # ========================
-    # ATTRIBUTE CLASSIFICATION (legacy)
+    # ANTI CONFUSION (SOFT - FIX)
+    # ========================
+    anti_penalty = 0
+    if anti_conflict_text(a, b):
+        anti_penalty = -0.5   # không reject nữa
+
+    # ========================
+    # ATTRIBUTE CLASSIFICATION
     # ========================
     id_a, attr_a = classify_tokens(ta)
     id_b, attr_b = classify_tokens(tb)
@@ -103,7 +138,6 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     w1 = parse_weight(na)
     w2 = parse_weight(nb)
 
-    # HARD RULE: weight mismatch
     if w1 is not None and w2 is not None and w1 != w2:
         return False, build_explain(0, 0, -1, 0, "weight mismatch")
 
@@ -114,7 +148,6 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     w = weight_score(w1, w2)
     fz = fuzzy(na, nb)
 
-    # legacy attribute conflict
     if attr_a and attr_b and not set(attr_a).intersection(set(attr_b)):
         return False, build_explain(0, tok, w, fz, "attribute conflict")
 
@@ -123,18 +156,15 @@ def match_product(a, b, synonym_map, attribute_vocab, debug=False):
     # ========================
     score = compute_score(tok, w, fz)
 
-    # attribute effects
     score += flavor_penalty(attr_full_a, attr_full_b)
     score += sugar_penalty
+    score += anti_penalty   # ⭐ FIX QUAN TRỌNG
 
     # ========================
-    # PREFER SPECIFIC NAME (FIXED POSITION)
+    # PREFER SPECIFIC NAME
     # ========================
-    len_bonus = 0
     if len(tb) > len(ta):
-        len_bonus = 0.05
-
-    score += len_bonus
+        score += 0.05
 
     # ========================
     # DECISION
