@@ -6,3 +6,11 @@ git push origin main
 git push origin v1.x.y
 
 👉 Đây là baseline workflow — dùng được cho hầu hết project.
+
+Nếu chỉ update tài liệu:
+
+git add README.md
+git commit -m "docs: update README"
+git push origin main
+
+👉 Thế là đủ. KHÔNG cần tạo tag mới.
