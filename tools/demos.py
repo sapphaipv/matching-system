@@ -1,33 +1,100 @@
 import os
 import pandas as pd
 
-def tim_trung():
-    excel_file = r"tools\excel_files\KQ.xlsx"
+store_name = "205NTT"
+input_dir = r"D:\CTY\TenSanPham\\" + store_name
 
-    df = pd.read_excel(excel_file)
+file_hd = os.path.join(input_dir, "HD_Products.xlsx")
+file_result = os.path.join(input_dir, "Result.xlsx")
+output_file = os.path.join(input_dir, "HD_Products_Clean.xlsx")
+
+def xoa_ten_hang():
+
+    col = "Tên hàng"
+
+    # Đọc dữ liệu
+    df_hd = pd.read_excel(file_hd)
+    df_rs = pd.read_excel(file_result)
 
     # Chuẩn hóa
-    df["Tên file"] = df["Tên file"].astype(str).str.strip()
+    df_hd[col] = df_hd[col].astype(str).str.strip()
+    df_rs[col] = df_rs[col].astype(str).str.strip()
 
-    # Tìm các dòng trùng
-    duplicates = df[df.duplicated(subset=["Tên file"], keep=False)]
+    # Tập tên cần xóa
+    ten_xoa = set(df_rs[col])
 
-    # Sắp xếp cho dễ nhìn
-    duplicates = duplicates.sort_values(by="Tên file")
+    # Lọc giữ lại những dòng KHÔNG nằm trong Result
+    df_clean = df_hd[~df_hd[col].isin(ten_xoa)].copy()
 
-    # Xuất ra file
-    duplicates.to_excel("duplicates.xlsx", index=False)
+    # Ghi file
+    df_clean.to_excel(output_file, index=False)
 
-    print(f"Số dòng trùng: {len(duplicates)}")
-    print("Đã lưu vào duplicates.xlsx")
-
-    # In nhanh ra màn hình
-    print("\nDanh sách trùng:")
-    print(duplicates["Tên file"].value_counts())
+    print(f"Tổng ban đầu: {len(df_hd)}")
+    print(f"Số dòng bị xóa: {len(df_hd) - len(df_clean)}")
+    print(f"Còn lại: {len(df_clean)}")
+    print(f"✔ File xuất: {output_file}")
 
 
 if __name__ == "__main__":
-    tim_trung()
+    xoa_ten_hang()
+
+# def xoa_ma_hang():
+
+#     col = "Mã hàng"
+
+#     # Đọc dữ liệu
+#     df_sp = pd.read_excel(file_sp)
+#     df_rs = pd.read_excel(file_result)
+
+#     # Chuẩn hóa
+#     df_sp[col] = df_sp[col].astype(str).str.strip()
+#     df_rs[col] = df_rs[col].astype(str).str.strip()
+
+#     # Tạo tập mã cần xóa
+#     ma_xoa = set(df_rs[col])
+
+#     # Lọc giữ lại những dòng KHÔNG nằm trong Result
+#     df_clean = df_sp[~df_sp[col].isin(ma_xoa)].copy()
+
+#     # Ghi file
+#     df_clean.to_excel(output_file, index=False)
+
+#     print(f"Tổng ban đầu: {len(df_sp)}")
+#     print(f"Số dòng bị xóa: {len(df_sp) - len(df_clean)}")
+#     print(f"Còn lại: {len(df_clean)}")
+#     print(f"✔ File xuất: {output_file}")
+
+
+# if __name__ == "__main__":
+#     xoa_ma_hang()
+
+# def tim_trung():
+#     excel_file = r"tools\excel_files\KQ.xlsx"
+
+#     df = pd.read_excel(excel_file)
+
+#     # Chuẩn hóa
+#     df["Tên file"] = df["Tên file"].astype(str).str.strip()
+
+#     # Tìm các dòng trùng
+#     duplicates = df[df.duplicated(subset=["Tên file"], keep=False)]
+
+#     # Sắp xếp cho dễ nhìn
+#     duplicates = duplicates.sort_values(by="Tên file")
+
+#     # Xuất ra file
+#     duplicates.to_excel("duplicates.xlsx", index=False)
+
+#     print(f"Số dòng trùng: {len(duplicates)}")
+#     print("Đã lưu vào duplicates.xlsx")
+
+#     # In nhanh ra màn hình
+#     print("\nDanh sách trùng:")
+#     print(duplicates["Tên file"].value_counts())
+
+
+# if __name__ == "__main__":
+#     tim_trung()
 
 # def tim_file_thieu():
 #     folder_path = r"d:\CTY\HoaDonXML\205Ntt\HDDT-In-2026-01"
