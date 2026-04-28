@@ -3,7 +3,7 @@ import os
 
 # 1. Cấu hình đường dẫn
 
-store_name = "205NTT"
+store_name = "96TP"
 input_dir = r"D:\CTY\TenSanPham\\" + store_name
 
 file_input = os.path.join(input_dir, "HoaDonThue.xlsx")

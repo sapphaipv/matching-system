@@ -6,9 +6,11 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import re
 
+STORE_NAME = "96TP"
+
 def quet_hoa_don_final():
-    root_dir = r"D:\CTY\HoaDonXML\205NTT\_XML_Data"
-    output_file = r"D:\CTY\TenSanPham\205NTT\HoaDonThue.xlsx"
+    root_dir = 'D:\\CTY\\HoaDonXML\\' + STORE_NAME + '\\'  + '_XML_Data'
+    output_file = 'D:\\CTY\\TenSanPham\\' + STORE_NAME + '\\' + 'HoaDonThue.xlsx'
     results = []
 
     if not os.path.exists(root_dir):
