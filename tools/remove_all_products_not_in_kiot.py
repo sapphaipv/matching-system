@@ -1,4 +1,4 @@
-# 1) Giữ lại trong TenHang_Tuyet.xlsx:
+# 1) Giữ lại trong PRODUCT_NAME:
 #    → những dòng CÓ "Mã hàng" tồn tại trong SanPham.xlsx
 
 # 2) Xuất ra KhongCo_MaHang.xlsx:
@@ -7,16 +7,18 @@
 
 import pandas as pd
 
+PRODUCT_NAME = "TenHang_Tuyet.xlsx"
+
 def xu_ly_ma_hang():
 
     store_name = "205NTT"
     path_name = r"D:\CTY\TenSanPham\\" + store_name
 
-    file_tenhang = path_name + "\\" + "TenHang_Tuyet.xlsx"
+    file_tenhang = path_name + "\\" + PRODUCT_NAME
     file_sanpham = path_name + "\\" + "SanPham.xlsx"
 
     output_khong_co = path_name + "\\" + "KhongCo_MaHang.xlsx"
-    output_da_loc = path_name + "\\" + "TenHang_Tuyet_Filtered.xlsx"
+    output_da_loc = path_name + "\\" + PRODUCT_NAME + "_Filtered.xlsx"
 
     col = "Mã hàng"
 

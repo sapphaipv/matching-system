@@ -5,7 +5,7 @@
 import pandas as pd
 
 def tach_file_sanpham():
-    store_name = "205NTT"
+    store_name = "96TP"
     path_name = r"D:\CTY\TenSanPham\\" + store_name
 
     input_file = path_name + "\\" + "SanPham.xlsx"

@@ -23,6 +23,7 @@ def split_services_and_products():
         service_keywords = [
             'dịch vụ', 'phí', 'chiết khấu', 'khuyến mãi', 'tặng kèm', 
             'lắp đặt', 'vận chuyển', 'thuê', 'sửa chữa', 'bảo dưỡng',
+            'điều chỉnh', 'bảng kê số',
             'công nợ', 'hỗ trợ', 'quà tặng', 'không thu tiền', '(km)', 'hàng km', 'km'
         ]
         

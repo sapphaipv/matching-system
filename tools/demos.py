@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-store_name = "205NTT"
+store_name = "96TP"
 input_dir = r"D:\CTY\TenSanPham\\" + store_name
 
 file_hd = os.path.join(input_dir, "HD_Products.xlsx")
