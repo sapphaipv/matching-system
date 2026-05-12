@@ -1,0 +1,7 @@
+feat		thêm tính năng		MINOR
+fix			sửa bug				PATCH
+break		phá backward		MAJOR
+refactor	cải tiến code		PATCH
+perf		tối ưu performance	PATCH
+docs		tài liệu			không tăng
+chore		việc lặt vặt		không tăng
