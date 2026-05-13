@@ -1,5 +1,6 @@
 # Tự động download HÓA ĐƠN ĐIỆN TỬ từ web THUẾ
 # ============================================
+import sys
 import requests
 import cloudscraper
 import os
@@ -11,6 +12,35 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import socket
 import requests.packages.urllib3.util.connection as urllib3_cn
+
+# =========================
+# COMMAND ARGUMENT
+# =========================
+
+if len(sys.argv) < 2:
+
+    print("Usage:")
+    print("  python download.py /i")
+    print("  python download.py /o")
+    sys.exit()
+
+arg = sys.argv[1].lower()
+
+if arg in ["/i", "i", "in", "purchase"]:
+
+    INVOICE_TYPE = "purchase"
+
+elif arg in ["/o", "o", "out", "sale", "sold"]:
+
+    INVOICE_TYPE = "sold"
+
+else:
+
+    print("Invalid argument!")
+    print("Use /i or /o")
+    sys.exit()
+
+print(f"MODE = {INVOICE_TYPE.upper()}")
 
 def force_ipv4():
     return socket.AF_INET
@@ -67,7 +97,7 @@ TO_DATE   = cfg["TO_DATE"]
 JWT_TOKEN = cfg["JWT_TOKEN"]
 COOKIE_TS = cfg["COOKIE_TS"]
 MAX_WORKERS = cfg["MAX_WORKERS"]
-INVOICE_TYPE = cfg["INVOICE_TYPE"]
+# INVOICE_TYPE = cfg["INVOICE_TYPE"]
 
 # ================= CONFIG =================
 
@@ -211,12 +241,22 @@ def fetch_all():
     while True:
 
         if INVOICE_TYPE.lower() in ["purchase", "in"]: 
+            # url = (
+            #     f"https://hoadondientu.gdt.gov.vn:30000/"  y
+            #     f"{BASE_API}/invoices/{INV_TYPE}"
+            # )
+
             params = {
                 "sort": "tdlap:desc",
                 "size": 50,
                 "search": f"tdlap=ge={FROM_DATE}T00:00:00;tdlap=le={TO_DATE}T23:59:59;ttxly==5"
             }
         else:
+            # url = (
+            #     f"https://hoadondientu.gdt.gov.vn/api/"
+            #     f"{BASE_API}/invoices/{INV_TYPE}"
+            # )
+
             params = {
                 "sort": "tdlap:desc",
                 "size": 5,
