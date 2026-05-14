@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import socket
 import requests.packages.urllib3.util.connection as urllib3_cn
 
+
 # =========================
 # COMMAND ARGUMENT
 # =========================
@@ -27,15 +28,12 @@ if len(sys.argv) < 2:
 arg = sys.argv[1].lower()
 
 if arg in ["/i", "i", "in", "purchase"]:
-
     INVOICE_TYPE = "purchase"
 
 elif arg in ["/o", "o", "out", "sale", "sold"]:
-
     INVOICE_TYPE = "sold"
 
 else:
-
     print("Invalid argument!")
     print("Use /i or /o")
     sys.exit()
@@ -175,7 +173,93 @@ def create_session():
 
     return s
 
+
+def validate_token():
+
+    try:
+
+        url = f"https://hoadondientu.gdt.gov.vn/api/{BASE_API}/invoices/{INV_TYPE}"
+
+        params = {
+            "sort": "tdlap:desc",
+            "size": 1,
+        }
+
+        r = session.get(
+            url,
+            params=params,
+            timeout=(10, 30)
+        )
+
+        print("VALIDATE:", r.status_code)
+
+        # chỉ coi là token chết khi 401/403
+        if r.status_code in [401, 403]:
+            return False
+
+        # server lỗi -> bỏ qua
+        if r.status_code >= 500:
+            print("VALIDATE SERVER ERROR -> bỏ qua")
+            return True
+
+        ctype = r.headers.get("Content-Type", "")
+
+        # đôi lúc HDDT trả HTML lỗi nginx/cloudflare
+        if "text/html" in ctype:
+            print("VALIDATE HTML RESPONSE -> bỏ qua")
+            return True
+
+        try:
+            data = r.json()
+            return isinstance(data, dict)
+
+        except:
+            print("VALIDATE JSON ERROR -> bỏ qua")
+            return True
+
+    except requests.exceptions.ReadTimeout:
+        print("VALIDATE TIMEOUT -> bỏ qua")
+        return True
+
+    except requests.exceptions.ConnectionError:
+        print("VALIDATE CONNECTION ERROR -> bỏ qua")
+        return True
+
+    except Exception as e:
+        print("VALIDATE ERROR:", e)
+        return True
+    
+def refresh_token():
+
+    log("⚠️ TOKEN EXPIRED → cập nhật config.txt rồi ENTER để chạy tiếp...")
+    input()
+
+    global session
+    global JWT_TOKEN, COOKIE_TS
+    # global BASE_API, INV_TYPE, INV_FOLDER
+
+    cfg_new = load_config()
+
+    JWT_TOKEN = cfg_new["JWT_TOKEN"]
+    COOKIE_TS = cfg_new["COOKIE_TS"]
+
+    # INVOICE_TYPE = cfg_new["INVOICE_TYPE"]
+    # mode = setup_invoice_mode(INVOICE_TYPE)
+
+    # INV_TYPE = mode["INV_TYPE"]
+    # BASE_API = mode["BASE_API"]
+    # INV_FOLDER = mode["INV_FOLDER"]
+
+    session = create_session()
+
+    log("✅ TOKEN UPDATED")
+
 session = create_session()
+
+if not validate_token():
+    log("⚠️ TOKEN INVALID/EXPIRED")
+    refresh_token()
+
 
 # ================= TOKEN CHECK =================
 def is_token_expired(resp):
@@ -189,44 +273,6 @@ def is_token_expired(resp):
         pass
     return False
 
-
-# def refresh_token():
-#     log("⚠️ TOKEN EXPIRED → cập nhật config.txt rồi ENTER để chạy tiếp...")
-#     input()
-#     global session, JWT_TOKEN, COOKIE_TS
-
-#     cfg_new = load_config()
-#     JWT_TOKEN = cfg_new["JWT_TOKEN"]
-#     COOKIE_TS = cfg_new["COOKIE_TS"]
-
-#     session = create_session()
-#     log("✅ TOKEN UPDATED")
-
-def refresh_token():
-
-    log("⚠️ TOKEN EXPIRED → cập nhật config.txt rồi ENTER để chạy tiếp...")
-    input()
-
-    global session
-    global JWT_TOKEN, COOKIE_TS
-    global INVOICE_TYPE, BASE_API, INV_TYPE, INV_FOLDER
-
-    cfg_new = load_config()
-
-    JWT_TOKEN = cfg_new["JWT_TOKEN"]
-    COOKIE_TS = cfg_new["COOKIE_TS"]
-
-    INVOICE_TYPE = cfg_new["INVOICE_TYPE"]
-
-    mode = setup_invoice_mode(INVOICE_TYPE)
-
-    INV_TYPE = mode["INV_TYPE"]
-    BASE_API = mode["BASE_API"]
-    INV_FOLDER = mode["INV_FOLDER"]
-
-    session = create_session()
-
-    log("✅ TOKEN UPDATED")
 
 # ================= FETCH =================
 def fetch_all():
@@ -271,21 +317,47 @@ def fetch_all():
         # print(session.headers)
 
         # r = session.get(url, params=params, timeout=20)
-        r = session.get(
-            url,
-            params=params,
-            timeout=(10, 180)
-)
 
-        if is_token_expired(r):
-            refresh_token()
+        success = False
+
+        for attempt in range(5):
+            try:
+                r = session.get(
+                    url,
+                    params=params,
+                    timeout=(10, 180)
+                )
+
+                print("FETCH STATUS:", r.status_code)
+
+                if is_token_expired(r):
+                    refresh_token()
+                    continue
+
+                if r.status_code == 200:
+
+                    try:
+                        data = r.json()
+                        success = True
+                        break
+
+                    except Exception as e:
+                        log(f"[JSON ERROR] {e}")
+
+                else:
+                    log(f"[FETCH ERROR] status={r.status_code}")
+
+            except Exception as e:
+
+                log(f"[FETCH RETRY {attempt+1}] {e}")
+
+            time.sleep(5)
+
+        if not success:
+
+            log("[SKIP PAGE]")
             continue
 
-        if r.status_code != 200:
-            log("[STOP] fetch lỗi")
-            break
-
-        data = r.json()
         invs = data.get("datas", [])
 
         # print(r.text[:1000])
