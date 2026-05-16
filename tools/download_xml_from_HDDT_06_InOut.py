@@ -11,8 +11,8 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import socket
-import requests.packages.urllib3.util.connection as urllib3_cn
-
+# import requests.packages.urllib3.util.connection as urllib3_cn
+import urllib3.util.connection as urllib3_cn
 
 # =========================
 # COMMAND ARGUMENT
