@@ -14,6 +14,122 @@ import socket
 # import requests.packages.urllib3.util.connection as urllib3_cn
 import urllib3.util.connection as urllib3_cn
 
+import browser_cookie3
+
+def get_hddt_auth():
+
+    import json
+    import requests
+    import websocket
+
+    try:
+
+        # ==========================
+        # Lấy danh sách tab Chrome
+        # ==========================
+        tabs = requests.get(
+            "http://127.0.0.1:9222/json",
+            timeout=5
+        ).json()
+
+        target = None
+
+        for t in tabs:
+
+            url = t.get("url", "")
+
+            if "hoadondientu.gdt.gov.vn" in url:
+
+                target = t
+                break
+
+        if not target:
+            raise Exception(
+                "Không tìm thấy tab HDDT đang login"
+            )
+
+        # ==========================
+        # Kết nối Chrome DevTools
+        # ==========================
+        ws = websocket.create_connection(
+            target["webSocketDebuggerUrl"],
+            timeout=10
+        )
+
+        # Enable Network
+        ws.send(json.dumps({
+            "id": 1,
+            "method": "Network.enable"
+        }))
+        ws.recv()
+
+        # ==========================
+        # Lấy cookies runtime
+        # ==========================
+        ws.send(json.dumps({
+            "id": 2,
+            "method": "Network.getCookies"
+        }))
+
+        result = json.loads(ws.recv())
+
+        ws.close()
+
+        cookies = {}
+
+        for c in result["result"]["cookies"]:
+            cookies[c["name"]] = c["value"]
+
+        # ==========================
+        # JWT
+        # ==========================
+        jwt_token = (
+            cookies.get("jwt")
+            or cookies.get("JWT")
+        )
+
+        if not jwt_token:
+            raise Exception(
+                "Không tìm thấy JWT"
+            )
+
+        # ==========================
+        # TS Cookie động
+        # ví dụ:
+        # TS0147e700
+        # ==========================
+        ts_cookie_name = None
+        ts_cookie_value = None
+
+        for k, v in cookies.items():
+
+            if k.startswith("TS01"):
+
+                ts_cookie_name = k
+                ts_cookie_value = v
+                break
+
+        if not ts_cookie_name:
+            raise Exception(
+                "Không tìm thấy TS cookie"
+            )
+
+        print("✅ AUTO TOKEN")
+        print("JWT =", jwt_token[:40] + "...")
+        print("TS =", ts_cookie_name)
+
+        return (
+            jwt_token,
+            ts_cookie_name,
+            ts_cookie_value
+        )
+
+    except Exception as e:
+
+        raise Exception(
+            f"Auto auth failed: {e}"
+        )
+
 # =========================
 # COMMAND ARGUMENT
 # =========================
@@ -92,10 +208,30 @@ FOLDER_PREFIX = cfg["FOLDER_PREFIX"]
 STORE_NAME = cfg["STORE_NAME"]
 FROM_DATE = cfg["FROM_DATE"]
 TO_DATE   = cfg["TO_DATE"]
-JWT_TOKEN = cfg["JWT_TOKEN"]
-COOKIE_TS = cfg["COOKIE_TS"]
 MAX_WORKERS = cfg["MAX_WORKERS"]
+# JWT_TOKEN = cfg["JWT_TOKEN"]
+# COOKIE_TS = cfg["COOKIE_TS"]
 # INVOICE_TYPE = cfg["INVOICE_TYPE"]
+
+try:
+
+    (
+        JWT_TOKEN,
+        TS_COOKIE_NAME,
+        COOKIE_TS
+    ) = get_hddt_auth()
+
+except Exception as e:
+
+    print("❌ AUTO TOKEN ERROR:", e)
+
+    cfg = load_config()
+
+    JWT_TOKEN = cfg["JWT_TOKEN"]
+    COOKIE_TS = cfg["COOKIE_TS"]
+
+    # fallback cũ
+    TS_COOKIE_NAME = "TS01c977ee"
 
 # ================= CONFIG =================
 
@@ -162,14 +298,22 @@ def create_session():
         })
 
         # QUAN TRỌNG
-        s.headers["Cookie"] = f"jwt={JWT_TOKEN}; TS01c977ee={COOKIE_TS}"
+        # s.headers["Cookie"] = f"jwt={JWT_TOKEN}; TS01c977ee={COOKIE_TS}"
+        s.headers["Cookie"] = (
+            f"jwt={JWT_TOKEN}; "
+            f"{TS_COOKIE_NAME}={COOKIE_TS}"
+)
 
     else:
         raise ValueError("INVOICE_TYPE không hợp lệ")
 
     # Cookie session
-    s.cookies.set("jwt", JWT_TOKEN)
-    s.cookies.set("TS01c977ee", COOKIE_TS)
+    # s.cookies.set("jwt", JWT_TOKEN)
+    # s.cookies.set("TS01c977ee", COOKIE_TS)
+    s.cookies.set(
+        TS_COOKIE_NAME,
+        COOKIE_TS
+    )
 
     return s
 
